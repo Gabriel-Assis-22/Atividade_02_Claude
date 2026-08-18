@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= filme.titulo %> — Catálogo Tom Hanks</title>
+  <meta name="description" content="<%= filme.sinopse.slice(0, 150) %>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="/catalog" class="logo">🎬 Tom Hanks</a>
+      <nav class="header-nav">
+        <a href="/catalog">Catálogo</a>
+        <a href="/user/favorites">Meus Favoritos</a>
+        <span class="usuario-nome">👤 <%= usuario.nome %></span>
+        <a href="/auth/logout" class="btn-logout">Sair</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="movie-detail">
+      <!-- Pôster -->
+      <div class="movie-detail-poster">
+        <% if (filme.posterUrl) { %>
+          <img src="<%= filme.posterUrl %>" alt="Pôster de <%= filme.titulo %>">
+        <% } else { %>
+          <div class="poster-placeholder">🎬</div>
+        <% } %>
+      </div>
+
+      <!-- Informações -->
+      <div class="movie-detail-info">
+        <a href="/catalog" class="back-link">← Voltar ao catálogo</a>
+        <h1><%= filme.titulo %></h1>
+        <div class="movie-meta">
+          <span class="badge"><%= filme.ano %></span>
+          <span class="badge badge-rating">⭐ <%= filme.nota %></span>
+        </div>
+        <p class="sinopse"><%= filme.sinopse %></p>
+
+        <!-- Botão Favoritar / Desfavoritar -->
+        <div class="favorite-section">
+          <% if (isFavorito) { %>
+            <form action="/user/favorites/remove" method="POST" id="form-desfavoritar">
+              <input type="hidden" name="tmdb_movie_id" value="<%= filme.id %>">
+              <button type="submit" class="btn btn-favorited" id="btn-desfavoritar">
+                ❤️ Favoritado
+              </button>
+            </form>
+          <% } else { %>
+            <form action="/user/favorites" method="POST" id="form-favoritar">
+              <input type="hidden" name="tmdb_movie_id" value="<%= filme.id %>">
+              <input type="hidden" name="titulo" value="<%= filme.titulo %>">
+              <input type="hidden" name="poster_path" value="<%= filme.poster_path %>">
+              <button type="submit" class="btn btn-favorite" id="btn-favoritar">
+                🤍 Favoritar
+              </button>
+            </form>
+          <% } %>
+        </div>
+
+        <!-- Seção de Comentários -->
+        <div class="comments-section">
+          <h2>Meus Comentários</h2>
+
+          <!-- Formulário de novo comentário -->
+          <form action="/user/comments" method="POST" class="comment-form" id="form-comentario">
+            <input type="hidden" name="tmdb_movie_id" value="<%= filme.id %>">
+            <textarea
+              name="texto"
+              id="texto-comentario"
+              placeholder="Escreva seu comentário sobre este filme..."
+              rows="3"
+              maxlength="1000"
+              required
+            ></textarea>
+            <button type="submit" class="btn btn-primary" id="btn-comentar">Publicar comentário</button>
+          </form>
+
+          <!-- Lista de comentários -->
+          <div class="comments-list" id="comments-list">
+            <% if (comentarios.length === 0) { %>
+              <p class="no-comments">Você ainda não comentou este filme.</p>
+            <% } else { %>
+              <% comentarios.forEach(function(c) { %>
+                <div class="comment-card">
+                  <p class="comment-text"><%= c.texto %></p>
+                  <span class="comment-date">
+                    <%= new Date(c.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) %>
+                  </span>
+                </div>
+              <% }) %>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>ISW055 · Atividade 02 &mdash; Dados fornecidos por <a href="https://www.themoviedb.org" target="_blank">TMDB</a></p>
+  </footer>
+</body>
+</html>
