@@ -1,17 +1,17 @@
 version: "3.8"
 
 services:
-  app:
-    build: .
+  frontend:
+    build: ./frontend
     ports:
-      - "8208:3000"   # Porta reservada do aluno → porta interna do container
-    environment:
-      - TMDB_API_KEY=${TMDB_API_KEY}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - SESSION_SECRET=${SESSION_SECRET}
-      - PORT=3000
+      - "8208:80"        # Porta reservada do aluno → Nginx
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    expose:
+      - "8080"           # Só acessível internamente pelo Nginx
+    env_file: .env       # Lê diretamente o .env existente na raiz
     restart: unless-stopped
