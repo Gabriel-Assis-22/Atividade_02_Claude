@@ -78,7 +78,7 @@ builder.Services.AddFluentMigratorCore()
     .ConfigureRunner(r => r
         .AddMySql5()
         .WithGlobalConnectionString(connString)
-        .ScanIn(typeof(_001_CreateUsuarios).Assembly).For.Migrations())
+        .ScanIn(typeof(_001_CreateUsuarios).Assembly).For.All())
     .AddLogging(lb => lb.AddConsole());
 
 // ── Controllers + Swagger ─────────────────────────────────────────────────────
