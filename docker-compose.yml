@@ -21,7 +21,16 @@ services:
       - "8080"           # Apenas acessível internamente pelo Nginx / rede interna
     depends_on:
       - auth-service
-    env_file: .env       # Lê variáveis de ambiente
+    environment:
+      - TMDB_API_KEY
+      - DB_HOST
+      - DB_PORT
+      - DB_USER
+      - DB_PASSWORD
+      - DB_NAME
+      - JWT_SECRET
+      - AUTH_SERVICE_URL=http://auth-service:8081
+      - ASPNETCORE_URLS=http://+:8080
     networks:
       - app-network
     restart: unless-stopped
@@ -30,7 +39,16 @@ services:
     build: ./auth-service
     expose:
       - "8081"           # Exclusivo rede interna Docker — NUNCA exposto ao host
-    env_file: .env       # Lê variáveis de ambiente (Mailtrap, DB, JWT)
+    environment:
+      - MAILTRAP_API_TOKEN
+      - DB_HOST
+      - DB_PORT
+      - DB_USER
+      - DB_PASSWORD
+      - DB_NAME
+      - JWT_SECRET
+      - FRONTEND_URL=https://gabriel-assis-isw055.lapps.studio
+      - ASPNETCORE_URLS=http://+:8081
     networks:
       - app-network
     restart: unless-stopped
