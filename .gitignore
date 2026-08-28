@@ -2,10 +2,13 @@
 node_modules/
 .env
 
-# ── .NET backend ───────────────────────────────
+# ── .NET backend & auth-service ─────────────────
 backend/**/bin/
 backend/**/obj/
 backend/**/*.user
+auth-service/**/bin/
+auth-service/**/obj/
+auth-service/**/*.user
 
 # ── Angular frontend ────────────────────────────
 frontend/node_modules/

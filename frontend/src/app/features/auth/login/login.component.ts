@@ -24,7 +24,10 @@ import { AuthService } from '../../../core/services/auth.service';
               <input id="email" type="email" [(ngModel)]="email" name="email" placeholder="seu@email.com" required>
             </div>
             <div class="form-group">
-              <label for="senha">Senha</label>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <label for="senha">Senha</label>
+                <a routerLink="/auth/forgot-password" style="font-size:.8rem;color:var(--clr-accent)">Esqueceu a senha?</a>
+              </div>
               <input id="senha" type="password" [(ngModel)]="senha" name="senha" placeholder="••••••••" required>
             </div>
             <button type="submit" class="btn btn-primary btn-full" [disabled]="loading">

@@ -1,17 +1,36 @@
 version: "3.8"
 
+networks:
+  app-network:
+    driver: bridge
+
 services:
   frontend:
     build: ./frontend
     ports:
-      - "8208:80"        # Porta reservada do aluno → Nginx
+      - "8208:80"        # Único ponto de entrada público exposto no host
     depends_on:
       - backend
+    networks:
+      - app-network
     restart: unless-stopped
 
   backend:
     build: ./backend
     expose:
-      - "8080"           # Só acessível internamente pelo Nginx
-    env_file: .env       # Lê diretamente o .env existente na raiz
+      - "8080"           # Apenas acessível internamente pelo Nginx / rede interna
+    depends_on:
+      - auth-service
+    env_file: .env       # Lê variáveis de ambiente
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  auth-service:
+    build: ./auth-service
+    expose:
+      - "8081"           # Exclusivo rede interna Docker — NUNCA exposto ao host
+    env_file: .env       # Lê variáveis de ambiente (Mailtrap, DB, JWT)
+    networks:
+      - app-network
     restart: unless-stopped

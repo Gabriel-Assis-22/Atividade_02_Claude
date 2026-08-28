@@ -21,6 +21,14 @@ export class AuthService {
     return this.http.post(`${environment.apiUrl}/auth/register`, { nome, email, senha });
   }
 
+  forgotPassword(email: string) {
+    return this.http.post<{ mensagem: string }>(`${environment.apiUrl}/auth/forgot-password`, { email });
+  }
+
+  resetPassword(token: string, novaSenha: string) {
+    return this.http.post<{ mensagem: string }>(`${environment.apiUrl}/auth/reset-password`, { token, novaSenha });
+  }
+
   logout() {
     localStorage.removeItem(this.TOKEN_KEY);
     this.router.navigate(['/auth/login']);

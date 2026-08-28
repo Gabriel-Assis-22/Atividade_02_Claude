@@ -1,5 +1,4 @@
 using System.Text;
-using Application.UseCases.Auth;
 using Application.UseCases.Comments;
 using Application.UseCases.Favorites;
 using Domain.Repositories;
@@ -40,9 +39,14 @@ builder.Services.AddHttpClient<TmdbService>(client =>
         new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tmdbApiKey);
 });
 
+// ── Auth Service HttpClient (Comunicação Interna Docker) ──────────────────────
+var authServiceUrl = Environment.GetEnvironmentVariable("AUTH_SERVICE_URL") ?? "http://auth-service:8081";
+builder.Services.AddHttpClient("AuthService", client =>
+{
+    client.BaseAddress = new Uri(authServiceUrl);
+});
+
 // ── Use Cases ──────────────────────────────────────────────────────────────────
-builder.Services.AddScoped<LoginUseCase>();
-builder.Services.AddScoped<RegisterUseCase>();
 builder.Services.AddScoped<GetFavoritesUseCase>();
 builder.Services.AddScoped<AddFavoriteUseCase>();
 builder.Services.AddScoped<RemoveFavoriteUseCase>();
