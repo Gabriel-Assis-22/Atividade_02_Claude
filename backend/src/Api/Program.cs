@@ -2,12 +2,10 @@ using System.Text;
 using Application.UseCases.Comments;
 using Application.UseCases.Favorites;
 using Domain.Repositories;
-using Domain.Services;
 using FluentMigrator.Runner;
 using Infrastructure.ExternalServices;
 using Infrastructure.Migrations;
 using Infrastructure.Persistence;
-using Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -26,10 +24,8 @@ var connString = $"Server={dbHost};Port={dbPort};Database={dbName};Uid={dbUser};
 
 // ── Infrastructure ─────────────────────────────────────────────────────────────
 builder.Services.AddSingleton(new DbConnectionFactory(connString));
-builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddScoped<IFavoritoRepository, FavoritoRepository>();
 builder.Services.AddScoped<IComentarioRepository, ComentarioRepository>();
-builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 
 // ── TMDB HttpClient ────────────────────────────────────────────────────────────
 builder.Services.AddHttpClient<TmdbService>(client =>
