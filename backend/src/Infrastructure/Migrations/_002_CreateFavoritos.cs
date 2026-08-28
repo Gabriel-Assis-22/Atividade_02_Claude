@@ -7,29 +7,27 @@ public class _002_CreateFavoritos : Migration
 {
     public override void Up()
     {
-        if (!Schema.Table("favoritos").Exists())
-        {
-            Create.Table("favoritos")
-                .WithColumn("id").AsInt32().PrimaryKey().Identity()
-                .WithColumn("usuario_id").AsInt32().NotNullable()
-                    .ForeignKey("usuarios", "id")
-                .WithColumn("tmdb_movie_id").AsInt32().NotNullable()
-                .WithColumn("titulo").AsString(255).NotNullable()
-                .WithColumn("poster_path").AsString(255).Nullable()
-                .WithColumn("criado_em").AsDateTime().NotNullable()
-                    .WithDefaultValue(SystemMethods.CurrentDateTime);
-
-            Create.UniqueConstraint("uq_favoritos_usuario_filme")
-                .OnTable("favoritos")
-                .Columns("usuario_id", "tmdb_movie_id");
-        }
+        Execute.Sql(@"
+            CREATE TABLE IF NOT EXISTS `favoritos` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `usuario_id` INT NOT NULL,
+                `tmdb_movie_id` INT NOT NULL,
+                `titulo` VARCHAR(255) NOT NULL,
+                `poster_path` VARCHAR(255) NULL,
+                `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                CONSTRAINT `fk_favoritos_usuario` 
+                    FOREIGN KEY (`usuario_id`) 
+                    REFERENCES `usuarios` (`id`) 
+                    ON DELETE CASCADE,
+                CONSTRAINT `uq_favoritos_usuario_filme` 
+                    UNIQUE (`usuario_id`, `tmdb_movie_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
     }
 
     public override void Down()
     {
-        if (Schema.Table("favoritos").Exists())
-        {
-            Delete.Table("favoritos");
-        }
+        Execute.Sql("DROP TABLE IF EXISTS `favoritos`;");
     }
 }

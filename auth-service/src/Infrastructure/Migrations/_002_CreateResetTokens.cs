@@ -7,24 +7,24 @@ public class _002_CreateResetTokens : Migration
 {
     public override void Up()
     {
-        if (!Schema.Table("reset_tokens").Exists())
-        {
-            Create.Table("reset_tokens")
-                .WithColumn("token").AsString(64).PrimaryKey()
-                .WithColumn("usuario_id").AsInt32().NotNullable()
-                    .ForeignKey("usuarios", "id")
-                .WithColumn("criado_em").AsDateTime().NotNullable()
-                    .WithDefaultValue(SystemMethods.CurrentDateTime)
-                .WithColumn("expira_em").AsDateTime().NotNullable()
-                .WithColumn("usado").AsBoolean().NotNullable().WithDefaultValue(false);
-        }
+        Execute.Sql(@"
+            CREATE TABLE IF NOT EXISTS `reset_tokens` (
+                `token` VARCHAR(64) NOT NULL,
+                `usuario_id` INT NOT NULL,
+                `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `expira_em` DATETIME NOT NULL,
+                `usado` BOOLEAN NOT NULL DEFAULT FALSE,
+                PRIMARY KEY (`token`),
+                CONSTRAINT `fk_reset_tokens_usuario` 
+                    FOREIGN KEY (`usuario_id`) 
+                    REFERENCES `usuarios` (`id`) 
+                    ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
     }
 
     public override void Down()
     {
-        if (Schema.Table("reset_tokens").Exists())
-        {
-            Delete.Table("reset_tokens");
-        }
+        Execute.Sql("DROP TABLE IF EXISTS `reset_tokens`;");
     }
 }

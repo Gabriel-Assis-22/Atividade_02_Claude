@@ -7,29 +7,21 @@ public class _001_CreateUsuarios : Migration
 {
     public override void Up()
     {
-        if (!Schema.Table("usuarios").Exists())
-        {
-            Create.Table("usuarios")
-                .WithColumn("id").AsInt32().PrimaryKey().Identity()
-                .WithColumn("nome").AsString(100).NotNullable()
-                .WithColumn("email").AsString(150).NotNullable().Unique()
-                .WithColumn("senha_hash").AsString(255).NotNullable()
-                .WithColumn("role").AsString(20).NotNullable().WithDefaultValue("usuario")
-                .WithColumn("criado_em").AsDateTime().NotNullable()
-                    .WithDefaultValue(SystemMethods.CurrentDateTime);
-        }
-        else if (!Schema.Table("usuarios").Column("role").Exists())
-        {
-            Alter.Table("usuarios")
-                .AddColumn("role").AsString(20).NotNullable().WithDefaultValue("usuario");
-        }
+        Execute.Sql(@"
+            CREATE TABLE IF NOT EXISTS `usuarios` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `nome` VARCHAR(100) NOT NULL,
+                `email` VARCHAR(150) NOT NULL UNIQUE,
+                `senha_hash` VARCHAR(255) NOT NULL,
+                `role` VARCHAR(20) NOT NULL DEFAULT 'usuario',
+                `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
     }
 
     public override void Down()
     {
-        if (Schema.Table("usuarios").Exists())
-        {
-            Delete.Table("usuarios");
-        }
+        Execute.Sql("DROP TABLE IF EXISTS `usuarios`;");
     }
 }

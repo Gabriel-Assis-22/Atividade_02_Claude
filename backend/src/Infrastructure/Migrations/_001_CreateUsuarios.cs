@@ -7,23 +7,20 @@ public class _001_CreateUsuarios : Migration
 {
     public override void Up()
     {
-        if (!Schema.Table("usuarios").Exists())
-        {
-            Create.Table("usuarios")
-                .WithColumn("id").AsInt32().PrimaryKey().Identity()
-                .WithColumn("nome").AsString(100).NotNullable()
-                .WithColumn("email").AsString(150).NotNullable().Unique()
-                .WithColumn("senha_hash").AsString(255).NotNullable()
-                .WithColumn("criado_em").AsDateTime().NotNullable()
-                    .WithDefaultValue(SystemMethods.CurrentDateTime);
-        }
+        Execute.Sql(@"
+            CREATE TABLE IF NOT EXISTS `usuarios` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `nome` VARCHAR(100) NOT NULL,
+                `email` VARCHAR(150) NOT NULL UNIQUE,
+                `senha_hash` VARCHAR(255) NOT NULL,
+                `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
     }
 
     public override void Down()
     {
-        if (Schema.Table("usuarios").Exists())
-        {
-            Delete.Table("usuarios");
-        }
+        Execute.Sql("DROP TABLE IF EXISTS `usuarios`;");
     }
 }
