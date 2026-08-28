@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
@@ -26,17 +26,17 @@ const TMDB_IMG = 'https://image.tmdb.org/t/p/w500';
     <main class="main-content">
       <div class="catalog-header">
         <h1>❤️ Meus <span class="highlight">Favoritos</span></h1>
-        <p>{{ favoritos.length }} filme{{ favoritos.length !== 1 ? 's' : '' }} salvo{{ favoritos.length !== 1 ? 's' : '' }}</p>
+        <p>{{ favoritos().length }} filme{{ favoritos().length !== 1 ? 's' : '' }} salvo{{ favoritos().length !== 1 ? 's' : '' }}</p>
       </div>
 
-      <div *ngIf="favoritos.length === 0 && !loading" class="empty-state">
+      <div *ngIf="favoritos().length === 0 && !loading()" class="empty-state">
         <span class="empty-icon">🎬</span>
         <p>Você ainda não favoritou nenhum filme.</p>
         <a routerLink="/catalog" class="btn btn-primary">Explorar catálogo</a>
       </div>
 
-      <div *ngIf="!loading && favoritos.length > 0" class="movies-grid">
-        <a *ngFor="let fav of favoritos" [routerLink]="['/movie', fav.tmdbMovieId]" class="movie-card">
+      <div *ngIf="!loading() && favoritos().length > 0" class="movies-grid">
+        <a *ngFor="let fav of favoritos()" [routerLink]="['/movie', fav.tmdbMovieId]" class="movie-card">
           <div class="movie-poster">
             <img *ngIf="fav.posterPath" [src]="getImgUrl(fav.posterPath)" [alt]="fav.titulo" loading="lazy">
             <div *ngIf="!fav.posterPath" class="poster-placeholder">🎬</div>
@@ -58,11 +58,19 @@ export class FavoritesPageComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthService);
 
-  favoritos: Favorite[] = [];
-  loading = true;
+  favoritos = signal<Favorite[]>([]);
+  loading = signal(true);
 
   ngOnInit() {
-    this.api.getFavorites().subscribe({ next: (f) => { this.favoritos = f; this.loading = false; }, error: () => { this.loading = false; } });
+    this.api.getFavorites().subscribe({
+      next: (f) => {
+        this.favoritos.set(f);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+      }
+    });
   }
 
   getImgUrl(path: string) { return `${TMDB_IMG}${path}`; }

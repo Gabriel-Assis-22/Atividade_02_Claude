@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -17,7 +17,7 @@ import { AuthService } from '../../../core/services/auth.service';
             <h1>Catálogo Tom Hanks</h1>
             <p>Acesse sua conta para continuar</p>
           </div>
-          <div *ngIf="erro" class="alert alert-error">{{ erro }}</div>
+          <div *ngIf="erro()" class="alert alert-error">{{ erro() }}</div>
           <form (ngSubmit)="onLogin()" class="auth-form">
             <div class="form-group">
               <label for="email">E-mail</label>
@@ -30,8 +30,8 @@ import { AuthService } from '../../../core/services/auth.service';
               </div>
               <input id="senha" type="password" [(ngModel)]="senha" name="senha" placeholder="••••••••" required>
             </div>
-            <button type="submit" class="btn btn-primary btn-full" [disabled]="loading">
-              {{ loading ? 'Entrando...' : 'Entrar' }}
+            <button type="submit" class="btn btn-primary btn-full" [disabled]="loading()">
+              {{ loading() ? 'Entrando...' : 'Entrar' }}
             </button>
           </form>
           <p class="auth-switch">Não tem conta? <a routerLink="/auth/register">Cadastre-se</a></p>
@@ -46,17 +46,17 @@ export class LoginComponent {
 
   email = '';
   senha = '';
-  erro = '';
-  loading = false;
+  erro = signal('');
+  loading = signal(false);
 
   onLogin() {
-    this.erro = '';
-    this.loading = true;
+    this.erro.set('');
+    this.loading.set(true);
     this.auth.login(this.email, this.senha).subscribe({
       next: () => this.router.navigate(['/catalog']),
       error: (err) => {
-        this.erro = err.error?.erro ?? 'Erro ao fazer login.';
-        this.loading = false;
+        this.erro.set(err.error?.erro ?? 'Erro ao fazer login.');
+        this.loading.set(false);
       },
     });
   }

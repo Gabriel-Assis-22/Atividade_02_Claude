@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -22,25 +22,25 @@ import { MovieDetail, Comment } from '../../../shared/models/models';
       </div>
     </header>
 
-    <main class="main-content" *ngIf="filme">
+    <main class="main-content" *ngIf="filme() as movie">
       <div class="movie-detail">
         <div class="movie-detail-poster">
-          <img *ngIf="filme.posterUrl" [src]="filme.posterUrl" [alt]="filme.titulo">
-          <div *ngIf="!filme.posterUrl" class="poster-placeholder">🎬</div>
+          <img *ngIf="movie.posterUrl" [src]="movie.posterUrl" [alt]="movie.titulo">
+          <div *ngIf="!movie.posterUrl" class="poster-placeholder">🎬</div>
         </div>
 
         <div class="movie-detail-info">
           <a routerLink="/catalog" class="back-link">← Voltar ao catálogo</a>
-          <h1>{{ filme.titulo }}</h1>
+          <h1>{{ movie.titulo }}</h1>
           <div class="movie-meta">
-            <span class="badge">{{ filme.ano }}</span>
-            <span class="badge badge-rating">⭐ {{ filme.nota }}</span>
+            <span class="badge">{{ movie.ano }}</span>
+            <span class="badge badge-rating">⭐ {{ movie.nota }}</span>
           </div>
-          <p class="sinopse">{{ filme.sinopse }}</p>
+          <p class="sinopse">{{ movie.sinopse }}</p>
 
           <div class="favorite-section">
-            <button *ngIf="isFavorito" (click)="onUnfavorite()" class="btn btn-favorited">❤️ Favoritado</button>
-            <button *ngIf="!isFavorito" (click)="onFavorite()" class="btn btn-favorite">🤍 Favoritar</button>
+            <button *ngIf="isFavorito()" (click)="onUnfavorite()" class="btn btn-favorited">❤️ Favoritado</button>
+            <button *ngIf="!isFavorito()" (click)="onFavorite()" class="btn btn-favorite">🤍 Favoritar</button>
           </div>
 
           <div class="comments-section">
@@ -51,8 +51,8 @@ import { MovieDetail, Comment } from '../../../shared/models/models';
               <button type="submit" class="btn btn-primary">Publicar comentário</button>
             </form>
             <div class="comments-list">
-              <p *ngIf="comentarios.length === 0" class="no-comments">Você ainda não comentou este filme.</p>
-              <div *ngFor="let c of comentarios" class="comment-card">
+              <p *ngIf="comentarios().length === 0" class="no-comments">Você ainda não comentou este filme.</p>
+              <div *ngFor="let c of comentarios()" class="comment-card">
                 <p class="comment-text">{{ c.texto }}</p>
                 <span class="comment-date">{{ c.criadoEm | date:'dd MMM yyyy' }}</span>
               </div>
@@ -72,34 +72,39 @@ export class MovieDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   auth = inject(AuthService);
 
-  filme: MovieDetail | null = null;
-  isFavorito = false;
-  comentarios: Comment[] = [];
+  filme = signal<MovieDetail | null>(null);
+  isFavorito = signal(false);
+  comentarios = signal<Comment[]>([]);
   novoComentario = '';
 
   ngOnInit() {
     const id = Number(this.route.snapshot.paramMap.get('id'));
-    this.api.getMovie(id).subscribe(f => { this.filme = f; });
-    this.api.checkFavorite(id).subscribe(r => { this.isFavorito = r.isFavorito; });
-    this.api.getComments(id).subscribe(c => { this.comentarios = c; });
+    this.api.getMovie(id).subscribe(f => { this.filme.set(f); });
+    this.api.checkFavorite(id).subscribe(r => { this.isFavorito.set(r.isFavorito); });
+    this.api.getComments(id).subscribe(c => { this.comentarios.set(c); });
   }
 
   onFavorite() {
-    if (!this.filme) return;
-    this.api.addFavorite({ tmdbMovieId: this.filme.id, titulo: this.filme.titulo, posterPath: this.filme.posterPath }).subscribe(() => {
-      this.isFavorito = true;
+    const current = this.filme();
+    if (!current) return;
+    this.api.addFavorite({ tmdbMovieId: current.id, titulo: current.titulo, posterPath: current.posterPath }).subscribe(() => {
+      this.isFavorito.set(true);
     });
   }
 
   onUnfavorite() {
-    if (!this.filme) return;
-    this.api.removeFavorite(this.filme.id).subscribe(() => { this.isFavorito = false; });
+    const current = this.filme();
+    if (!current) return;
+    this.api.removeFavorite(current.id).subscribe(() => {
+      this.isFavorito.set(false);
+    });
   }
 
   onComment() {
-    if (!this.filme || !this.novoComentario.trim()) return;
-    this.api.addComment({ tmdbMovieId: this.filme.id, texto: this.novoComentario.trim() }).subscribe(() => {
-      this.api.getComments(this.filme!.id).subscribe(c => { this.comentarios = c; });
+    const current = this.filme();
+    if (!current || !this.novoComentario.trim()) return;
+    this.api.addComment({ tmdbMovieId: current.id, texto: this.novoComentario.trim() }).subscribe(() => {
+      this.api.getComments(current.id).subscribe(c => { this.comentarios.set(c); });
       this.novoComentario = '';
     });
   }

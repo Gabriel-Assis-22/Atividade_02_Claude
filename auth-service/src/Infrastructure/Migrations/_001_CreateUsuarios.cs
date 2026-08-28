@@ -17,6 +17,8 @@ public class _001_CreateUsuarios : Migration
                 `criado_em` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            ALTER TABLE `usuarios` ADD COLUMN IF NOT EXISTS `role` VARCHAR(20) NOT NULL DEFAULT 'usuario';
         ");
     }
 

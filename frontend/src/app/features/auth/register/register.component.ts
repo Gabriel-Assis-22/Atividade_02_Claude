@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -17,7 +17,7 @@ import { AuthService } from '../../../core/services/auth.service';
             <h1>Criar Conta</h1>
             <p>Junte-se ao catálogo de filmes</p>
           </div>
-          <div *ngIf="erro" class="alert alert-error">{{ erro }}</div>
+          <div *ngIf="erro()" class="alert alert-error">{{ erro() }}</div>
           <form (ngSubmit)="onRegister()" class="auth-form">
             <div class="form-group">
               <label for="nome">Nome</label>
@@ -31,8 +31,8 @@ import { AuthService } from '../../../core/services/auth.service';
               <label for="senha">Senha <small>(mínimo 6 caracteres)</small></label>
               <input id="senha" type="password" [(ngModel)]="senha" name="senha" placeholder="••••••••" minlength="6" required>
             </div>
-            <button type="submit" class="btn btn-primary btn-full" [disabled]="loading">
-              {{ loading ? 'Cadastrando...' : 'Cadastrar' }}
+            <button type="submit" class="btn btn-primary btn-full" [disabled]="loading()">
+              {{ loading() ? 'Cadastrando...' : 'Cadastrar' }}
             </button>
           </form>
           <p class="auth-switch">Já tem conta? <a routerLink="/auth/login">Fazer login</a></p>
@@ -45,16 +45,25 @@ export class RegisterComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
 
-  nome = ''; email = ''; senha = '';
-  erro = ''; loading = false;
+  nome = '';
+  email = '';
+  senha = '';
+  erro = signal('');
+  loading = signal(false);
 
   onRegister() {
-    this.erro = '';
-    if (this.senha.length < 6) { this.erro = 'A senha deve ter pelo menos 6 caracteres.'; return; }
-    this.loading = true;
+    this.erro.set('');
+    if (this.senha.length < 6) {
+      this.erro.set('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    this.loading.set(true);
     this.auth.register(this.nome, this.email, this.senha).subscribe({
       next: () => this.router.navigate(['/auth/login']),
-      error: (err) => { this.erro = err.error?.erro ?? 'Erro ao cadastrar.'; this.loading = false; },
+      error: (err) => {
+        this.erro.set(err.error?.erro ?? 'Erro ao cadastrar.');
+        this.loading.set(false);
+      },
     });
   }
 }

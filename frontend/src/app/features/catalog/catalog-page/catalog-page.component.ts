@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../../core/services/api.service';
@@ -24,14 +24,14 @@ import { Movie } from '../../../shared/models/models';
     <main class="main-content">
       <div class="catalog-header">
         <h1>Filmografia de <span class="highlight">Tom Hanks</span></h1>
-        <p>{{ filmes.length }} filmes encontrados</p>
+        <p>{{ filmes().length }} filmes encontrados</p>
       </div>
 
-      <div *ngIf="erro" class="alert alert-error">{{ erro }}</div>
-      <div *ngIf="loading" class="empty-state"><span class="empty-icon">⏳</span><p>Carregando catálogo...</p></div>
+      <div *ngIf="erro()" class="alert alert-error">{{ erro() }}</div>
+      <div *ngIf="loading()" class="empty-state"><span class="empty-icon">⏳</span><p>Carregando catálogo...</p></div>
 
-      <div *ngIf="!loading" class="movies-grid">
-        <a *ngFor="let filme of filmes" [routerLink]="['/movie', filme.id]" class="movie-card">
+      <div *ngIf="!loading()" class="movies-grid">
+        <a *ngFor="let filme of filmes()" [routerLink]="['/movie', filme.id]" class="movie-card">
           <div class="movie-poster">
             <img [src]="filme.posterUrl" [alt]="filme.titulo" loading="lazy">
           </div>
@@ -52,14 +52,20 @@ export class CatalogPageComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthService);
 
-  filmes: Movie[] = [];
-  loading = true;
-  erro = '';
+  filmes = signal<Movie[]>([]);
+  loading = signal(true);
+  erro = signal('');
 
   ngOnInit() {
     this.api.getMovies().subscribe({
-      next: (data) => { this.filmes = data; this.loading = false; },
-      error: () => { this.erro = 'Não foi possível carregar o catálogo.'; this.loading = false; },
+      next: (data) => {
+        this.filmes.set(data);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.erro.set('Não foi possível carregar o catálogo.');
+        this.loading.set(false);
+      },
     });
   }
 }
