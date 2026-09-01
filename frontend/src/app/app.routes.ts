@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: '/catalog', pathMatch: 'full' },
+  { path: '', redirectTo: '/auth/login', pathMatch: 'full' },
   {
     path: 'auth',
     children: [
@@ -39,5 +39,5 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/favorites/favorites-page/favorites-page.component').then(m => m.FavoritesPageComponent),
   },
-  { path: '**', redirectTo: '/catalog' },
+  { path: '**', redirectTo: '/auth/login' },
 ];
