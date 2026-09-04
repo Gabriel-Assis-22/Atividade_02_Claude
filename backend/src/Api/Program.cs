@@ -49,6 +49,7 @@ builder.Services.AddScoped<RemoveFavoriteUseCase>();
 builder.Services.AddScoped<CheckFavoriteUseCase>();
 builder.Services.AddScoped<GetCommentsUseCase>();
 builder.Services.AddScoped<AddCommentUseCase>();
+builder.Services.AddScoped<DeleteCommentUseCase>();
 
 // ── JWT Auth ───────────────────────────────────────────────────────────────────
 var keyBytes = Encoding.UTF8.GetBytes(jwtSecret);

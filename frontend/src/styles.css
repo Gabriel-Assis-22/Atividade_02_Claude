@@ -144,7 +144,22 @@ button { cursor: pointer; font-family: inherit; }
   background: var(--clr-surface); border: 1px solid var(--clr-border);
   border-radius: var(--radius-sm); padding: 1rem; margin-bottom: .75rem;
 }
-.comment-text { margin-bottom: .5rem; line-height: 1.6; }
+.comment-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: .6rem; padding-bottom: .4rem; border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.comment-author { font-size: .85rem; color: var(--clr-accent); }
+.comment-header-right { display: flex; align-items: center; gap: .75rem; }
+.btn-delete-comment {
+  background: transparent; border: 1px solid rgba(255, 95, 109, 0.3);
+  color: #ff5f6d; padding: .2rem .55rem; border-radius: var(--radius-sm);
+  font-size: .75rem; cursor: pointer; transition: all var(--transition);
+  display: inline-flex; align-items: center; gap: .25rem;
+}
+.btn-delete-comment:hover {
+  background: rgba(255, 95, 109, 0.15); border-color: #ff5f6d;
+}
+.comment-text { margin-bottom: .25rem; line-height: 1.6; }
 .comment-date { font-size: .75rem; color: var(--clr-muted); }
 .no-comments { color: var(--clr-muted); font-size: .9rem; }
 

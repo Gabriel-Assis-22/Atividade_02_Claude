@@ -12,6 +12,7 @@ namespace Api.Controllers;
 public class CommentsController(
     GetCommentsUseCase getComments,
     AddCommentUseCase addComment,
+    DeleteCommentUseCase deleteComment,
     ILogger<CommentsController> logger) : ControllerBase
 {
     private int? CurrentUserId
@@ -28,6 +29,11 @@ public class CommentsController(
         }
     }
 
+    private string CurrentUserRole =>
+        User.FindFirst(ClaimTypes.Role)?.Value
+        ?? User.FindFirst("role")?.Value
+        ?? "usuario";
+
     [HttpGet("{movieId:int}")]
     public async Task<IActionResult> GetComments(int movieId)
     {
@@ -36,7 +42,7 @@ public class CommentsController(
 
         try
         {
-            var result = await getComments.ExecuteAsync(CurrentUserId.Value, movieId);
+            var result = await getComments.ExecuteAsync(movieId);
             return Ok(result);
         }
         catch (Exception ex)
@@ -69,6 +75,33 @@ public class CommentsController(
         {
             logger.LogError(ex, "Erro inesperado ao adicionar comentário");
             return StatusCode(500, new { erro = "Não foi possível salvar o comentário." });
+        }
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteComment(int id)
+    {
+        if (!CurrentUserId.HasValue)
+            return Unauthorized(new { erro = "Sessão expirada. Faça login novamente." });
+
+        try
+        {
+            var result = await deleteComment.ExecuteAsync(id, CurrentUserId.Value, CurrentUserRole);
+            return result switch
+            {
+                DeleteCommentResult.NotFound =>
+                    NotFound(new { erro = "Comentário não encontrado." }),
+                DeleteCommentResult.Forbidden =>
+                    StatusCode(403, new { erro = "Apenas administradores podem apagar comentários de outros usuários." }),
+                DeleteCommentResult.Success =>
+                    Ok(new { mensagem = "Comentário excluído com sucesso." }),
+                _ => StatusCode(500, new { erro = "Erro interno ao excluir comentário." })
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Erro ao excluir comentário {CommentId}", id);
+            return StatusCode(500, new { erro = "Erro interno ao excluir comentário." });
         }
     }
 }

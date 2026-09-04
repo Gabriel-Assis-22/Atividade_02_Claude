@@ -11,12 +11,14 @@ public class MailtrapEmailService : IEmailService
     private readonly HttpClient _httpClient;
     private readonly ILogger<MailtrapEmailService> _logger;
     private readonly string _apiToken;
+    private readonly string _inboxId;
 
     public MailtrapEmailService(HttpClient httpClient, ILogger<MailtrapEmailService> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
         _apiToken = Environment.GetEnvironmentVariable("MAILTRAP_API_TOKEN") ?? string.Empty;
+        _inboxId = Environment.GetEnvironmentVariable("MAILTRAP_INBOX_ID") ?? string.Empty;
     }
 
     public async Task SendPasswordResetEmailAsync(string toEmail, string toName, string resetLink)
@@ -53,11 +55,16 @@ public class MailtrapEmailService : IEmailService
                 text = $"Redefinir senha: {resetLink} (expira em 30 minutos)"
             };
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, "https://send.api.mailtrap.io/api/send")
+            var endpoint = !string.IsNullOrWhiteSpace(_inboxId)
+                ? $"https://sandbox.api.mailtrap.io/api/send/{_inboxId}"
+                : "https://send.api.mailtrap.io/api/send";
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
             {
                 Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
             };
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiToken);
+            request.Headers.TryAddWithoutValidation("Api-Token", _apiToken);
 
             var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode)

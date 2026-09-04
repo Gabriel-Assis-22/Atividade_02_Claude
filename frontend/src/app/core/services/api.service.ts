@@ -25,4 +25,7 @@ export class ApiService {
   addComment(body: { tmdbMovieId: number; texto: string }) {
     return this.http.post(`${this.base}/comments`, body);
   }
+  deleteComment(id: number) {
+    return this.http.delete(`${this.base}/comments/${id}`);
+  }
 }

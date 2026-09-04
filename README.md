@@ -114,6 +114,64 @@ services:
 
 ---
 
+## 🛡️ Controle de Acesso Baseado em Papéis (RBAC — Atividade 4)
+
+A autorização no sistema garante o princípio do menor privilégio, controlando o acesso a ações sensíveis estritamente no servidor através de papéis (*roles*).
+
+### 1. Matriz de Permissões por Papel
+
+| Recurso / Funcionalidade | Endpoint | `usuario` | `admin` | Regra de Autorização |
+| :--- | :--- | :---: | :---: | :--- |
+| **Catálogo de Filmes** | `GET /api/catalog` | ✅ | ✅ | Público / Autenticado |
+| **Detalhes do Filme** | `GET /api/catalog/{id}` | ✅ | ✅ | Público / Autenticado |
+| **Listar Favoritos** | `GET /api/favorites` | ✅ | ✅ | Apenas os próprios favoritos |
+| **Adicionar/Remover Favorito** | `POST`, `DELETE /api/favorites` | ✅ | ✅ | Apenas os próprios favoritos |
+| **Visualizar Comentários** | `GET /api/comments/{movieId}` | ✅ | ✅ | Comentários públicos de todos os usuários |
+| **Publicar Comentário** | `POST /api/comments` | ✅ | ✅ | Vinculado ao usuário autenticado |
+| **Excluir Próprio Comentário** | `DELETE /api/comments/{id}` | ✅ | ✅ | Autor do comentário (`comentario.usuario_id == user.id`) |
+| **Moderar Comentário Alheio** | `DELETE /api/comments/{id}` | ❌ **(403)** | ✅ **(200)** | **Ação exclusiva de Admin**: apagar comentário de terceiros |
+
+---
+
+### 2. Ação Exclusiva de Administrador (Moderação) & Enforcement
+
+A ação exclusiva de admin implementada é a **moderação de comentários**:
+- Qualquer usuário pode comentar em um filme e ver comentários de outros usuários.
+- Um usuário comum (`role: usuario`) tem permissão apenas para excluir os **seus próprios comentários**.
+- Se um usuário comum tentar excluir o comentário de outro usuário (mesmo forçando a chamada via Postman, curl ou inspecionar elemento), o servidor rejeita com **`HTTP 403 Forbidden`**:
+  ```json
+  {
+    "erro": "Apenas administradores podem apagar comentários de outros usuários."
+  }
+  ```
+- O administrador (`role: admin`) possui permissão ampla de moderação e pode excluir qualquer comentário.
+
+---
+
+### 3. Resposta Arquitetural: Padrão A ou Padrão B?
+
+> **Qual padrão a aplicação utiliza hoje?**
+> A aplicação utiliza o **PADRÃO B (Claims no Token JWT)**.
+> 
+> **Justificativa e funcionamento atual:**
+> No momento do login, o `auth-service` assina criptograficamente a claim `Role` dentro do token JWT (`new Claim(ClaimTypes.Role, usuario.Role)`). Quando o cliente faz requisições ao microsserviço de catálogo (`backend`), este valida a assinatura do token localmente via `JwtBearer` (usando a `JWT_SECRET` compartilhada) e extrai a role da claim, aplicando o enforcement com `403 Forbidden` sem precisar disparar uma chamada de rede para cada ação.
+>
+> **O que mudaria se fosse para o PADRÃO A (Enforcement Centralizado)?**
+> No **Padrão A**, o catálogo não confiaria nas claims internas do token para autorização. A cada ação sensível (`DELETE /api/comments/{id}`), o catálogo faria uma chamada HTTP interna para o `auth-service` (ex: `GET http://auth-service:8081/internal/validate`) repassando o token Bearer para que o `auth-service` consultasse o banco de dados em tempo real.
+> - **Trade-off:** O Padrão A permitiria revogação ou alteração imediata de permissão no banco sem esperar o token expirar, porém adicionaria latência de rede (ida e volta) a cada operação e tornaria o `auth-service` um ponto único de gargalo e falha (*single point of failure*). O Padrão B foi adotado pela maior eficiência, escalabilidade e desacoplamento entre microsserviços.
+
+---
+
+### 4. Usuários Pré-configurados para Testes (Seed da Migration)
+
+| Usuário | E-mail | Senha | Papel (`role`) | Finalidade |
+| :--- | :--- | :--- | :--- | :--- |
+| **Admin** | `admin@catalogo.com` | `admin123` | `admin` | Validação de moderação (sucesso 200) |
+| **Usuário 1** | `usuario1@catalogo.com` | `user123` | `usuario` | Autor dos comentários de teste |
+| **Usuário 2** | `usuario2@catalogo.com` | `user123` | `usuario` | Tentativa de invasão/moderação alheia (recusa 403) |
+
+---
+
 ## 🚀 Como Executar Localmente
 
 ### Pré-requisitos
@@ -136,8 +194,10 @@ Acesse a aplicação no navegador em `http://localhost:8208`.
 3. Configure as variáveis no campo **Env**:
    - `TMDB_API_KEY`
    - `MAILTRAP_API_TOKEN`
+   - `MAILTRAP_INBOX_ID=4415672`
    - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
    - `JWT_SECRET`
    - `AUTH_SERVICE_URL=http://auth-service:8081`
    - `FRONTEND_URL=https://gabriel-assis-isw055.lapps.studio`
 4. Clique em **Update the stack**.
+

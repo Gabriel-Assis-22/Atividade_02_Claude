@@ -44,17 +44,25 @@ import { MovieDetail, Comment } from '../../../shared/models/models';
           </div>
 
           <div class="comments-section">
-            <h2>Meus Comentários</h2>
+            <h2>Comentários dos Usuários</h2>
             <form (ngSubmit)="onComment()" class="comment-form">
               <textarea [(ngModel)]="novoComentario" name="texto" rows="3" maxlength="1000"
                 placeholder="Escreva seu comentário sobre este filme..." required></textarea>
               <button type="submit" class="btn btn-primary">Publicar comentário</button>
             </form>
             <div class="comments-list">
-              <p *ngIf="comentarios().length === 0" class="no-comments">Você ainda não comentou este filme.</p>
+              <p *ngIf="comentarios().length === 0" class="no-comments">Nenhum comentário ainda. Seja o primeiro a comentar!</p>
               <div *ngFor="let c of comentarios()" class="comment-card">
+                <div class="comment-header">
+                  <span class="comment-author">💬 <strong>{{ c.usuarioNome || 'Usuário' }}</strong></span>
+                  <div class="comment-header-right">
+                    <span class="comment-date">{{ c.criadoEm | date:'dd MMM yyyy HH:mm' }}</span>
+                    <button *ngIf="canDelete(c)" (click)="onDeleteComment(c.id)" class="btn-delete-comment" title="Excluir comentário">
+                      🗑️ Excluir
+                    </button>
+                  </div>
+                </div>
                 <p class="comment-text">{{ c.texto }}</p>
-                <span class="comment-date">{{ c.criadoEm | date:'dd MMM yyyy' }}</span>
               </div>
             </div>
           </div>
@@ -82,6 +90,26 @@ export class MovieDetailComponent implements OnInit {
     this.api.getMovie(id).subscribe(f => { this.filme.set(f); });
     this.api.checkFavorite(id).subscribe(r => { this.isFavorito.set(r.isFavorito); });
     this.api.getComments(id).subscribe(c => { this.comentarios.set(c); });
+  }
+
+  canDelete(c: Comment): boolean {
+    const currentUserId = this.auth.getCurrentUserId();
+    const isAdmin = this.auth.isAdmin();
+    return isAdmin || (currentUserId !== null && c.usuarioId === currentUserId);
+  }
+
+  onDeleteComment(commentId: number) {
+    if (!confirm('Deseja realmente excluir este comentário?')) return;
+    const current = this.filme();
+    if (!current) return;
+    this.api.deleteComment(commentId).subscribe({
+      next: () => {
+        this.api.getComments(current.id).subscribe(c => { this.comentarios.set(c); });
+      },
+      error: (err) => {
+        alert(err?.error?.erro || 'Erro ao excluir comentário.');
+      }
+    });
   }
 
   onFavorite() {

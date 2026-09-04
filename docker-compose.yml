@@ -41,6 +41,7 @@ services:
       - "8081"           # Exclusivo rede interna Docker — NUNCA exposto ao host
     environment:
       - MAILTRAP_API_TOKEN
+      - MAILTRAP_INBOX_ID
       - DB_HOST
       - DB_PORT
       - DB_USER

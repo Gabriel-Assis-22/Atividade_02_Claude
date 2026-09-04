@@ -25,6 +25,8 @@ export interface Favorite {
 
 export interface Comment {
   id: number;
+  usuarioId: number;
+  usuarioNome: string;
   tmdbMovieId: number;
   texto: string;
   criadoEm: string;
@@ -34,4 +36,5 @@ export interface AuthResponse {
   token: string;
   nome: string;
   email: string;
+  role?: string;
 }
