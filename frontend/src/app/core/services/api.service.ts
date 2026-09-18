@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { Movie, MovieDetail, Favorite, Comment } from '../../shared/models/models';
+import { Movie, MovieDetail, Favorite, Comment, AuditLog } from '../../shared/models/models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -27,5 +27,10 @@ export class ApiService {
   }
   deleteComment(id: number) {
     return this.http.delete(`${this.base}/comments/${id}`);
+  }
+
+  // Audit Logs (Admin)
+  getLogs(limite: number = 50) {
+    return this.http.get<AuditLog[]>(`${this.base}/logs?limite=${limite}`);
   }
 }

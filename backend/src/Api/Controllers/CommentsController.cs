@@ -3,6 +3,7 @@ using Application.UseCases.Comments;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Infrastructure.ExternalServices;
 
 namespace Api.Controllers;
 
@@ -13,6 +14,7 @@ public class CommentsController(
     GetCommentsUseCase getComments,
     AddCommentUseCase addComment,
     DeleteCommentUseCase deleteComment,
+    IAuditClient audit,
     ILogger<CommentsController> logger) : ControllerBase
 {
     private int? CurrentUserId
@@ -33,6 +35,11 @@ public class CommentsController(
         User.FindFirst(ClaimTypes.Role)?.Value
         ?? User.FindFirst("role")?.Value
         ?? "usuario";
+
+    private string? ClientIp =>
+        Request.Headers["X-Forwarded-For"].FirstOrDefault()
+        ?? Request.Headers["X-Real-IP"].FirstOrDefault()
+        ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
     [HttpGet("{movieId:int}")]
     public async Task<IActionResult> GetComments(int movieId)
@@ -64,6 +71,7 @@ public class CommentsController(
         try
         {
             await addComment.ExecuteAsync(CurrentUserId.Value, request);
+            await audit.LogAsync(CurrentUserId, "comentar", $"Filme ID: {request.TmdbMovieId}", ClientIp);
             return Ok(new { mensagem = "Comentário adicionado com sucesso." });
         }
         catch (MySqlConnector.MySqlException ex) when (ex.Number == 1452)
@@ -87,16 +95,30 @@ public class CommentsController(
         try
         {
             var result = await deleteComment.ExecuteAsync(id, CurrentUserId.Value, CurrentUserRole);
-            return result switch
+            switch (result)
             {
-                DeleteCommentResult.NotFound =>
-                    NotFound(new { erro = "Comentário não encontrado." }),
-                DeleteCommentResult.Forbidden =>
-                    StatusCode(403, new { erro = "Apenas administradores podem apagar comentários de outros usuários." }),
-                DeleteCommentResult.Success =>
-                    Ok(new { mensagem = "Comentário excluído com sucesso." }),
-                _ => StatusCode(500, new { erro = "Erro interno ao excluir comentário." })
-            };
+                case DeleteCommentResult.NotFound:
+                    return NotFound(new { erro = "Comentário não encontrado." });
+
+                case DeleteCommentResult.Forbidden:
+                    await audit.LogAsync(
+                        CurrentUserId,
+                        "tentativa_negada_403",
+                        $"Tentativa não autorizada de excluir comentário ID: {id}",
+                        ClientIp);
+                    return StatusCode(403, new { erro = "Apenas administradores podem apagar comentários de outros usuários." });
+
+                case DeleteCommentResult.Success:
+                    await audit.LogAsync(
+                        CurrentUserId,
+                        "apagar_comentario",
+                        $"Comentário ID: {id} moderado/excluído por papel: {CurrentUserRole}",
+                        ClientIp);
+                    return Ok(new { mensagem = "Comentário excluído com sucesso." });
+
+                default:
+                    return StatusCode(500, new { erro = "Erro interno ao excluir comentário." });
+            }
         }
         catch (Exception ex)
         {

@@ -42,6 +42,17 @@ builder.Services.AddHttpClient("AuthService", client =>
     client.BaseAddress = new Uri(authServiceUrl);
 });
 
+// ── Log Service HttpClient (Comunicação Interna Docker) ───────────────────────
+var logServiceUrl = Environment.GetEnvironmentVariable("LOG_SERVICE_URL") ?? "http://log-service:8082";
+builder.Services.AddHttpClient("LogService", client =>
+{
+    client.BaseAddress = new Uri(logServiceUrl);
+});
+builder.Services.AddHttpClient<IAuditClient, AuditClient>(client =>
+{
+    client.BaseAddress = new Uri(logServiceUrl);
+});
+
 // ── Use Cases ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<GetFavoritesUseCase>();
 builder.Services.AddScoped<AddFavoriteUseCase>();

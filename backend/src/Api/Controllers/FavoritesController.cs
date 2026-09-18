@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
+using Infrastructure.ExternalServices;
+
 namespace Api.Controllers;
 
 [ApiController]
@@ -14,6 +16,7 @@ public class FavoritesController(
     AddFavoriteUseCase addFavorite,
     RemoveFavoriteUseCase removeFavorite,
     CheckFavoriteUseCase checkFavorite,
+    IAuditClient audit,
     ILogger<FavoritesController> logger) : ControllerBase
 {
     private int? CurrentUserId
@@ -29,6 +32,11 @@ public class FavoritesController(
             return null;
         }
     }
+
+    private string? ClientIp =>
+        Request.Headers["X-Forwarded-For"].FirstOrDefault()
+        ?? Request.Headers["X-Real-IP"].FirstOrDefault()
+        ?? HttpContext.Connection.RemoteIpAddress?.ToString();
 
     [HttpGet]
     public async Task<IActionResult> GetFavorites()
@@ -73,6 +81,7 @@ public class FavoritesController(
         try
         {
             await addFavorite.ExecuteAsync(CurrentUserId.Value, request);
+            await audit.LogAsync(CurrentUserId, "favoritar_filme", $"Filme ID: {request.TmdbMovieId} ({request.Titulo})", ClientIp);
             return Ok(new { mensagem = "Favoritado com sucesso." });
         }
         catch (MySqlConnector.MySqlException ex) when (ex.Number == 1452)
@@ -96,6 +105,7 @@ public class FavoritesController(
         try
         {
             await removeFavorite.ExecuteAsync(CurrentUserId.Value, movieId);
+            await audit.LogAsync(CurrentUserId, "remover_favorito", $"Filme ID: {movieId}", ClientIp);
             return Ok(new { mensagem = "Favorito removido." });
         }
         catch (Exception ex)

@@ -25,11 +25,11 @@ O sistema foi modularizado em microsserviços independentes conectados por uma r
                                           │ /api/
                                           ▼
                                 ┌───────────────────┐
-                                │      backend      │
-                                │ (Catálogo de      │
-                                │  Filmes - .NET)   │
-                                └─────────┬─────────┘
-                                          │ HTTP Interno
+                                │      backend      │ ───▶ log-service (:8082)
+                                │ (Catálogo de      │          │
+                                │  Filmes - .NET)   │          ▼
+                                └─────────┬─────────┘     Redis Stream (:6379)
+                                          │ HTTP Interno   (XADD audit_stream)
                                           ▼ (http://auth-service:8081)
                                 ┌───────────────────┐
                                 │   auth-service    │ ──▶ Mailtrap (SMTP/API)
@@ -57,6 +57,15 @@ O sistema foi modularizado em microsserviços independentes conectados por uma r
   - Validação rigorosa: rejeita tokens inexistentes, expirados ou reutilizados.
 - **Envio Real de E-mails via Mailtrap**:
   - Disparo de e-mails transacionais com link de redefinição de senha para ambiente de desenvolvimento/inspeção segura.
+
+### 4. `log-service` (Auditoria — Porta interna: `8082` — **SEM PORTA NO HOST**)
+- Microsserviço dedicado de auditoria em .NET 10 Web API.
+- Responsável por receber eventos de auditoria emitidos pelo `backend` e `auth-service` e gravá-los no Redis Stream.
+- Endpoint de consulta de logs (`GET /logs?limite=N`) protegido por JWT estritamente para o papel `admin`.
+
+### 5. `redis` (Cache & Event Stream — Porta interna: `6379`)
+- Servidor Redis 7 em container alpine isolado na rede interna.
+- Utiliza **Redis Streams** (`XADD` e `XREVRANGE`) para persistência append-only ordenada no tempo de eventos de auditoria com altíssimo throughput.
 
 ---
 
@@ -169,6 +178,47 @@ A ação exclusiva de admin implementada é a **moderação de comentários**:
 | **Admin** | `admin@catalogo.com` | `admin123` | `admin` | Validação de moderação (sucesso 200) |
 | **Usuário 1** | `usuario1@catalogo.com` | `user123` | `usuario` | Autor dos comentários de teste |
 | **Usuário 2** | `usuario2@catalogo.com` | `user123` | `usuario` | Tentativa de invasão/moderação alheia (recusa 403) |
+
+---
+
+## 📜 Logs e Auditoria com Redis Streams (Atividade 5)
+
+A auditoria centralizada do sistema registra todas as ações humanas relevantes para rastreabilidade, conformidade e segurança ("quem fez o quê, quando e de onde").
+
+### 1. Log de Auditoria vs. Log de Aplicação
+- **Log de Aplicação:** Registra erros, traces e exceções técnicas voltadas a desenvolvedores para depuração de bugs.
+- **Log de Auditoria:** Registra ações de negócio executadas por usuários (logins, favoritos, comentários, exclusões e tentativas de acessos negados), persistido em serviço dedicado e imutável.
+
+### 2. Eventos Auditados & Estrutura
+Cada evento gravado no stream contém a estrutura:
+- `usuario_id`: ID numérico do usuário autenticado (ou nulo em ações anônimas).
+- `acao`: Identificador do evento auditado.
+- `detalhes`: Contexto complementar da ação (ex: ID do filme ou motivo do bloqueio).
+- `ip_origem`: Endereço IP do cliente (capturado dos cabeçalhos `X-Forwarded-For` repassados pelo Nginx).
+- `timestamp`: Data/hora UTC no padrão ISO 8601 gerada no momento da ocorrência.
+
+| Evento Auditado | Origem | Descrição |
+| :--- | :--- | :--- |
+| `login` | `backend` / `auth-service` | Autenticação bem-sucedida de usuário com credenciais válidas. |
+| `logout` | `backend` / `frontend` | Encerramento explícito de sessão pelo usuário (`POST /api/auth/logout`). |
+| `favoritar_filme` | `backend` (Catálogo) | Inclusão de um filme na lista de favoritos. |
+| `remover_favorito` | `backend` (Catálogo) | Remoção de um filme da lista de favoritos. |
+| `comentar` | `backend` (Catálogo) | Criação de um novo comentário em um filme. |
+| `apagar_comentario`| `backend` (Catálogo) | Exclusão do comentário pelo próprio autor ou moderação por administrador. |
+| `tentativa_negada_403` | `backend` | **Evento de Segurança:** Tentativa de violar permissão (excluir comentário alheio ou consultar logs sem ser admin). |
+
+### 3. Por que Redis Streams (`XADD` e `XREVRANGE`)?
+- **Desacoplamento e Performance:** Logs têm padrão *write-heavy* (escrita contínua e leitura esporádica). Persistir em banco relacional concorreria com transações de negócio do MariaDB.
+- **Estrutura Nativa de Log de Eventos:** O **Redis Streams** foi concebido especificamente para append-only ordenado no tempo:
+  - `XADD audit_stream * ...` gera IDs temporais automáticos (milissegundos) com complexidade $O(1)$ de inserção.
+  - `XREVRANGE audit_stream + - COUNT N` recupera eficientemente os últimos $N$ eventos em ordem cronológica decrescente.
+- **Centralização:** Nenhum serviço grava diretamente no Redis; todos enviam os eventos para o `log-service` via requisições HTTP assíncronas e não-bloqueantes.
+
+### 4. Consulta de Logs & Proteção RBAC
+- **Endpoint:** `GET /api/logs?limite=N` (repassado internamente ao `log-service:8082`).
+- **Controle de Acesso:**
+  - Usuário com `role: admin` ➔ Retorna lista cronológica dos eventos (**200 OK**).
+  - Usuário com `role: usuario` ➔ Bloqueado com **`403 Forbidden`** e gera automaticamente o evento `tentativa_negada_403`.
 
 ---
 

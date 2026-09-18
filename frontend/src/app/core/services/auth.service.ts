@@ -34,6 +34,10 @@ export class AuthService {
   }
 
   logout() {
+    this.http.post(`${environment.apiUrl}/auth/logout`, {}).subscribe({
+      next: () => {},
+      error: () => {}
+    });
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
     this.router.navigate(['/auth/login']);

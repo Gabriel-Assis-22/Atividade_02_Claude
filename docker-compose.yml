@@ -21,6 +21,7 @@ services:
       - "8080"           # Apenas acessível internamente pelo Nginx / rede interna
     depends_on:
       - auth-service
+      - log-service
     environment:
       - TMDB_API_KEY
       - DB_HOST
@@ -30,6 +31,7 @@ services:
       - DB_NAME
       - JWT_SECRET
       - AUTH_SERVICE_URL=http://auth-service:8081
+      - LOG_SERVICE_URL=http://log-service:8082
       - ASPNETCORE_URLS=http://+:8080
     networks:
       - app-network
@@ -39,6 +41,8 @@ services:
     build: ./auth-service
     expose:
       - "8081"           # Exclusivo rede interna Docker — NUNCA exposto ao host
+    depends_on:
+      - log-service
     environment:
       - MAILTRAP_API_TOKEN
       - MAILTRAP_INBOX_ID
@@ -49,7 +53,30 @@ services:
       - DB_NAME
       - JWT_SECRET
       - FRONTEND_URL=https://gabriel-assis-isw055.lapps.studio
+      - LOG_SERVICE_URL=http://log-service:8082
       - ASPNETCORE_URLS=http://+:8081
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    expose:
+      - "6379"           # Apenas rede interna Docker
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  log-service:
+    build: ./log-service
+    expose:
+      - "8082"           # Exclusivo rede interna Docker — NUNCA exposto ao host
+    depends_on:
+      - redis
+    environment:
+      - REDIS_CONNECTION=redis:6379
+      - JWT_SECRET
+      - ASPNETCORE_URLS=http://+:8082
     networks:
       - app-network
     restart: unless-stopped

@@ -38,3 +38,12 @@ export interface AuthResponse {
   email: string;
   role?: string;
 }
+
+export interface AuditLog {
+  id: string;
+  usuarioId: number | null;
+  acao: string;
+  detalhes: string | null;
+  ipOrigem: string | null;
+  timestamp: string;
+}
