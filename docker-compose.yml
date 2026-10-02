@@ -1,5 +1,3 @@
-version: "3.8"
-
 networks:
   app-network:
     driver: bridge
@@ -22,6 +20,7 @@ services:
     depends_on:
       - auth-service
       - log-service
+      - garage-init
     environment:
       - TMDB_API_KEY
       - DB_HOST
@@ -33,6 +32,16 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:8081
       - LOG_SERVICE_URL=http://log-service:8082
       - ASPNETCORE_URLS=http://+:8080
+      - GARAGE_ENDPOINT=http://garage:3900
+      - GARAGE_ACCESS_KEY
+      - GARAGE_SECRET_KEY
+      - GARAGE_BUCKET_NAME
+      - GARAGE_PUBLIC_BASE_URL
+      - MINIO_ENDPOINT
+      - MINIO_ROOT_USER
+      - MINIO_ROOT_PASSWORD
+      - MINIO_BUCKET_NAME
+      - MINIO_PUBLIC_BASE_URL
     networks:
       - app-network
     restart: unless-stopped
@@ -80,3 +89,38 @@ services:
     networks:
       - app-network
     restart: unless-stopped
+
+  garage:
+    image: dxflrs/garage:v1.0.1
+    command: /garage server
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    expose:
+      - "3900"           # API S3 na rede interna Docker
+      - "3902"           # Web S3 (acesso público) na rede interna Docker
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  garage-init:
+    build:
+      context: ./garage
+      dockerfile: Dockerfile
+    depends_on:
+      - garage
+    volumes:
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    environment:
+      - GARAGE_ACCESS_KEY
+      - GARAGE_SECRET_KEY
+      - GARAGE_BUCKET_NAME
+    networks:
+      - app-network
+    restart: "no"
+
+volumes:
+  garage_meta:
+  garage_data:

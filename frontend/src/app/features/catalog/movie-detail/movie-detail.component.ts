@@ -17,6 +17,7 @@ import { MovieDetail, Comment } from '../../../shared/models/models';
         <nav class="header-nav">
           <a routerLink="/catalog">Catálogo</a>
           <a routerLink="/favorites">Meus Favoritos</a>
+          <a routerLink="/profile">Meu Perfil</a>
           <a (click)="auth.logout()" class="btn-logout" style="cursor:pointer">Sair</a>
         </nav>
       </div>

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
-import { Movie, MovieDetail, Favorite, Comment, AuditLog } from '../../shared/models/models';
+import { Movie, MovieDetail, Favorite, Comment, AuditLog, UserProfile, UploadPhotoResponse } from '../../shared/models/models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -32,5 +32,20 @@ export class ApiService {
   // Audit Logs (Admin)
   getLogs(limite: number = 50) {
     return this.http.get<AuditLog[]>(`${this.base}/logs?limite=${limite}`);
+  }
+
+  // Profile
+  getMyProfile() {
+    return this.http.get<UserProfile>(`${this.base}/profile/me`);
+  }
+
+  updateProfile(body: { targetUserId?: number; bio: string | null }) {
+    return this.http.put<{ mensagem: string }>(`${this.base}/profile`, body);
+  }
+
+  uploadProfilePhoto(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<UploadPhotoResponse>(`${this.base}/profile/photo`, formData);
   }
 }

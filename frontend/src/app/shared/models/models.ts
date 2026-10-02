@@ -47,3 +47,19 @@ export interface AuditLog {
   ipOrigem: string | null;
   timestamp: string;
 }
+
+export interface UserProfile {
+  id: number;
+  nome: string;
+  email: string;
+  role: string;
+  fotoUrl: string | null;
+  bio: string | null;
+  criadoEm: string;
+  favoritos: Favorite[];
+}
+
+export interface UploadPhotoResponse {
+  fotoUrl: string;
+  mensagem: string;
+}

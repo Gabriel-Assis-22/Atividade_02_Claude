@@ -1,11 +1,14 @@
 using System.Text;
 using Application.UseCases.Comments;
 using Application.UseCases.Favorites;
+using Application.UseCases.Profile;
 using Domain.Repositories;
+using Domain.Services;
 using FluentMigrator.Runner;
 using Infrastructure.ExternalServices;
 using Infrastructure.Migrations;
 using Infrastructure.Persistence;
+using Infrastructure.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -26,6 +29,10 @@ var connString = $"Server={dbHost};Port={dbPort};Database={dbName};Uid={dbUser};
 builder.Services.AddSingleton(new DbConnectionFactory(connString));
 builder.Services.AddScoped<IFavoritoRepository, FavoritoRepository>();
 builder.Services.AddScoped<IComentarioRepository, ComentarioRepository>();
+builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+
+// ── Garage / S3 Object Storage ────────────────────────────────────────────────
+builder.Services.AddHttpClient<IStorageService, S3StorageService>();
 
 // ── TMDB HttpClient ────────────────────────────────────────────────────────────
 builder.Services.AddHttpClient<TmdbService>(client =>
@@ -61,6 +68,9 @@ builder.Services.AddScoped<CheckFavoriteUseCase>();
 builder.Services.AddScoped<GetCommentsUseCase>();
 builder.Services.AddScoped<AddCommentUseCase>();
 builder.Services.AddScoped<DeleteCommentUseCase>();
+builder.Services.AddScoped<GetProfileUseCase>();
+builder.Services.AddScoped<UpdateProfileUseCase>();
+builder.Services.AddScoped<UploadProfilePhotoUseCase>();
 
 // ── JWT Auth ───────────────────────────────────────────────────────────────────
 var keyBytes = Encoding.UTF8.GetBytes(jwtSecret);
@@ -100,12 +110,15 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// ── Executar Migrations no Startup ─────────────────────────────────────────────
+// ── Executar Migrations e Inicializar Bucket MinIO no Startup ─────────────────
 using (var scope = app.Services.CreateScope())
 {
     var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
     // MigrateUp() é idempotente — só aplica migrations ainda não registradas na tabela VersionInfo
     runner.MigrateUp();
+
+    var storage = scope.ServiceProvider.GetRequiredService<IStorageService>();
+    await storage.EnsureBucketCreatedAsync();
 }
 
 // ── Pipeline ───────────────────────────────────────────────────────────────────

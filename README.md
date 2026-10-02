@@ -249,5 +249,100 @@ Acesse a aplicação no navegador em `http://localhost:8208`.
    - `JWT_SECRET`
    - `AUTH_SERVICE_URL=http://auth-service:8081`
    - `FRONTEND_URL=https://gabriel-assis-isw055.lapps.studio`
+   - `GARAGE_ACCESS_KEY=GK0123456789abcdef01234567`
+   - `GARAGE_SECRET_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`
+   - `GARAGE_BUCKET_NAME=profile-photos`
+   - `GARAGE_PUBLIC_BASE_URL=/storage`
 4. Clique em **Update the stack**.
+
+---
+
+## 📷 Atividade 6 — Upload de Foto de Perfil (Object Storage com Garage S3)
+
+> **Entrega:** Sexta-feira, 02/10/2026  
+> **Professor:** [@siriani](https://github.com/siriani)  
+> **Continuação direta da Atividade 5 (Logs e Auditoria)**
+
+Nesta atividade, o sistema passou a suportar dados binários (imagens de perfil de usuários), separando o armazenamento do arquivo do banco relacional de negócio.
+
+### 1. Por que a imagem não mora no banco?
+Bancos relacionais (MariaDB/MySQL) são projetados e indexados para linhas pequenas e consultas estruturadas. Armazenar arquivos em colunas `BLOB` infla desnecessariamente o banco, degrada rotinas de backup, reduz o throughput do pool de conexões e consome memória cache valiosa do SGBD.
+
+A arquitetura adotada separa as responsabilidades em duas gravações complementares por ação de upload:
+1. **O arquivo binário** vai diretamente para o **Object Storage (Garage S3)** via API S3 padrão AWS.
+2. **Apenas a referência (chave e URL)** é persistida na coluna `foto_chave` e `foto_url` da tabela `usuarios` no **MariaDB**.
+
+```mermaid
+flowchart LR
+    Usuario["Usuário<br><small>envia a foto</small>"] --> App["App .NET<br><small>recebe e valida arquivo</small>"]
+    App -->|"1. arquivo binário (S3 API :3900)"| Garage["Garage S3 (Bucket)<br><small>guarda o arquivo</small>"]
+    App -->|"2. chave / URL"| MariaDB[("MariaDB<br><small>guarda só a referência</small>")]
+    Garage & MariaDB -.-> Perfil["Página de Perfil (Angular)<br><small>monta a URL na hora de exibir</small>"]
+```
+
+---
+
+### 2. Escolha Tecnológica: Garage S3 (GarageHQ)
+Conforme levantado no estudo de arquitetura, a infraestrutura adota o **Garage S3** (`dxflrs/garage:v1.0.1`), um object storage distribuído moderno, ultraleve e desenvolvido em **Rust**:
+* **Alta Eficiência e Baixo Footprint:** Consome apenas ~30 MB a 50 MB de RAM (comparado aos ~250 MB do MinIO).
+* **API S3 Padrão da AWS:** Totalmente compatível com o `AWSSDK.S3` utilizado pelo backend .NET.
+* **Resiliência e Disponibilidade:** Disponível de forma pública e estável no Docker Hub.
+
+---
+
+### 3. Trade-off Escolhido para Exibição da Imagem (Requisito 3)
+
+O enunciado solicita a decisão e justificativa documentada entre **Bucket com Leitura Pública** ou **URL Pré-assinada (Presigned URL)**:
+
+| Critério | **Bucket com Leitura Pública via Nginx Proxy** *(Opção Escolhida)* | **URL Pré-assinada / Temporária** |
+| :--- | :--- | :--- |
+| **Complexidade** | **Baixa**: URL persistida estática e montada diretamente na tag `<img src>` | **Alta**: Backend precisa gerar token criptográfico assinado a cada requisição de perfil |
+| **Cache HTTP** | **Excelente**: Navegadores e proxies realizam cache transparente via headers ETag/Last-Modified | **Inexistente/Ruim**: Cada assinatura altera a querystring da URL, quebrando o cache de CDN e browser |
+| **Segurança** | Adequada: Apenas o bucket de fotos públicas de perfil possui política de leitura aberta | Alta: Arquivo só acessível durante a janela de expiração configurada |
+
+#### Justificativa da Decisão:
+Adotamos o **Bucket com Leitura Pública (Public Read)** servido através do proxy reverso do Nginx (`/storage/`).
+- Em uma aplicação social de catálogo de filmes, **fotos de perfil são recursos essencialmente públicos**.
+- O uso de URLs públicas estáticas permite **cache HTTP local e de borda**, diminuindo latência e consumo de banda do servidor.
+- O storage permanece **100% isolado na rede interna Docker** (`app-network`). O acesso público ocorre apenas através do Nginx na mesma porta `8208` direcionando para o endpoint web do Garage com o Host header apropriado.
+
+---
+
+### 4. Proteção Estrita contra IDOR (Requisito 4)
+
+O sistema reaproveita o controle de acesso por JWT. Um usuário logado **jamais** consegue alterar a bio ou a foto de outro usuário:
+- Os endpoints `PUT /api/profile` e `POST /api/profile/photo` extraem o identificador do usuário **exclusivamente dos claims criptográficos do token JWT** validado (`User.FindFirst("userId")`).
+- Caso um cliente malicioso envie no corpo da requisição um `TargetUserId` pertencente a outro usuário (simulação de ataque IDOR), o backend:
+  1. Detecta a divergência entre a identidade autenticada e o alvo.
+  2. Rejeita imediatamente a operação com **`HTTP 403 Forbidden`**.
+  3. Emite um evento de segurança no `log-service` (`tentativa_idor_bloqueada`) com IP de origem e IDs envolvidos.
+
+---
+
+### 5. Fragmento do `docker-compose.yml` com Garage S3
+
+```yaml
+  garage:
+    image: dxflrs/garage:v1.0.1
+    environment:
+      - GARAGE_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - GARAGE_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - GARAGE_BUCKET_NAME=${GARAGE_BUCKET_NAME:-profile-photos}
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - ./garage/init.sh:/init.sh:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    entrypoint: ["/bin/sh", "/init.sh"]
+    expose:
+      - "3900"           # API S3 na rede interna Docker
+      - "3902"           # Web S3 (acesso público) na rede interna Docker
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  garage_meta:
+  garage_data:
+```
 

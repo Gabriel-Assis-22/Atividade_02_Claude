@@ -18,6 +18,7 @@ const TMDB_IMG = 'https://image.tmdb.org/t/p/w500';
         <nav class="header-nav">
           <a routerLink="/catalog">Catálogo</a>
           <a routerLink="/favorites" class="active">Meus Favoritos</a>
+          <a routerLink="/profile">Meu Perfil</a>
           <a (click)="auth.logout()" class="btn-logout" style="cursor:pointer">Sair</a>
         </nav>
       </div>
