@@ -1,7 +1,8 @@
 # Catálogo de Filmes — Tom Hanks (Arquitetura de Microsserviços)
 
 > ISW055 · Infraestrutura e Aplicações em Cloud · Professor [@siriani](https://github.com/siriani)  
-> Aluno: Gabriel Assis
+> Aluno: Gabriel Assis  
+> 📄 **Relatório Bimestral Oficial (P1):** [docs/P1_ISW055_Gabriel_Assis.pdf](docs/P1_ISW055_Gabriel_Assis.pdf)
 
 Aplicação web desenvolvida com arquitetura de microsserviços desacoplados, backend em **.NET 10 (C#) com Domain-Driven Design (DDD)**, frontend em **Angular 19 (SPA)** e banco **MariaDB**.
 
